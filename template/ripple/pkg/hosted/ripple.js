@@ -1,5 +1,5 @@
 /*! 
-  Ripple Mobile Environment Emulator v0.9.22 :: Built On Fri Jun 20 2014 14:23:50 GMT+0400 (Russian Standard Time)
+  Ripple Mobile Environment Emulator v0.9.24 :: Built On Thu Oct 16 2014 05:35:15 GMT-0700 (Pacific Daylight Time)
 
                                 Apache License
                            Version 2.0, January 2004
@@ -25060,14 +25060,14 @@ LegendURL:function(a,b){b.legend={};b.legend.href=a.getAttribute("xlink:href");b
     }
 }());
 /*!
- * accounting.js v0.3.2
- * Copyright 2011, Joss Crowcroft
+ * accounting.js v0.4.1
+ * Copyright 2014 Open Exchange Rates
  *
  * Freely distributable under the MIT license.
  * Portions of accounting.js are inspired or borrowed from underscore.js
  *
  * Full details and documentation:
- * http://josscrowcroft.github.com/accounting.js/
+ * http://openexchangerates.github.io/accounting.js/
  */
 
 (function(root, undefined) {
@@ -25078,7 +25078,7 @@ LegendURL:function(a,b){b.legend={};b.legend.href=a.getAttribute("xlink:href");b
 	var lib = {};
 
 	// Current version
-	lib.version = '0.3.2';
+	lib.version = '0.4.1';
 
 
 	/* --- Exposed settings --- */
@@ -25130,7 +25130,7 @@ LegendURL:function(a,b){b.legend={};b.legend.href=a.getAttribute("xlink:href");b
 	 * Tests whether supplied parameter is a true object
 	 */
 	function isObject(obj) {
-		return toString.call(obj) === '[object Object]';
+		return obj && toString.call(obj) === '[object Object]';
 	}
 
 	/**
@@ -25227,10 +25227,11 @@ LegendURL:function(a,b){b.legend={};b.legend.href=a.getAttribute("xlink:href");b
 
 	/**
 	 * Takes a string/array of strings, removes all formatting/cruft and returns the raw float value
-	 * alias: accounting.`parse(string)`
+	 * Alias: `accounting.parse(string)`
 	 *
-	 * Decimal must be included in the regular expression to match floats (default: "."), so if the number
-	 * uses a non-standard decimal separator, provide it as the second argument.
+	 * Decimal must be included in the regular expression to match floats (defaults to
+	 * accounting.settings.number.decimal), so if the number uses a non-standard decimal 
+	 * separator, provide it as the second argument.
 	 *
 	 * Also matches bracketed negatives (eg. "$ (1.99)" => -1.99)
 	 *
@@ -25250,8 +25251,8 @@ LegendURL:function(a,b){b.legend={};b.legend.href=a.getAttribute("xlink:href");b
 		// Return the value as-is if it's already a number:
 		if (typeof value === "number") return value;
 
-		// Default decimal point is "." but could be set to eg. "," in opts:
-		decimal = decimal || ".";
+		// Default decimal point comes from settings, but could be set to eg. "," in opts:
+		decimal = decimal || lib.settings.number.decimal;
 
 		 // Build regex to strip out everything except digits, decimal point and minus sign:
 		var regex = new RegExp("[^0-9-" + decimal + "]", ["g"]),
@@ -25284,11 +25285,12 @@ LegendURL:function(a,b){b.legend={};b.legend.href=a.getAttribute("xlink:href");b
 
 	/**
 	 * Format a number, with comma-separated thousands and custom precision/decimal places
+	 * Alias: `accounting.format()`
 	 *
 	 * Localise by overriding the precision and thousand / decimal separators
 	 * 2nd parameter `precision` can be an object matching `settings.number`
 	 */
-	var formatNumber = lib.formatNumber = function(number, precision, thousand, decimal) {
+	var formatNumber = lib.formatNumber = lib.format = function(number, precision, thousand, decimal) {
 		// Resursively format arrays:
 		if (isArray(number)) {
 			return map(number, function(val) {
@@ -26053,6 +26055,14 @@ module.exports = {
             "OPEN": 1,
             "CLOSE": 2
         }
+    },
+
+    "BATTERY_STATUS" : {
+        "BATTERY_STATUS_KEY": "battery-status-key",
+        "IS_PLUGGED_KEY" : "is-plugged-key",
+        "LEVEL_LABEL" : "battery-level-label",
+        "LEVEL_VALUE" : "battery-level",
+        "IS_PLUGGED_CHECKBOX" : "is-plugged"
     },
 
     "CSS_PREFIX":  {
@@ -29588,108 +29598,6 @@ _self = {
 module.exports = _self;
 
 });
-ripple.define('geo', function (ripple, exports, module) {
-/*
- *
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
- *
- */
-var db = ripple('db'),
-    exception = ripple('exception'),
-    event = ripple('event'),
-    utils = ripple('utils'),
-    _positionInfo = {
-        "latitude": 43.465187,
-        "longitude": -80.522372,
-        "altitude": 100,
-        "accuracy": 150,
-        "altitudeAccuracy": 80,
-        "heading": 0,
-        "speed": 0,
-        "cellID": 321654
-    },
-    self;
-
-function _serialize(settings) {
-    var tempSettings = utils.copy(settings);
-    tempSettings.position.timeStamp = "new Date(" + tempSettings.position.timeStamp.getTime() + ")";
-    return tempSettings;
-}
-
-function _validatePositionInfo(pInfo) {
-    return (pInfo &&
-        !(isNaN(pInfo.latitude) ||
-        isNaN(pInfo.longitude) ||
-        isNaN(pInfo.altitude) ||
-        isNaN(pInfo.accuracy) ||
-        isNaN(pInfo.altitudeAccuracy) ||
-        isNaN(pInfo.heading) ||
-        isNaN(pInfo.speed) ||
-        isNaN(pInfo.cellID))) ? true : false;
-}
-
-self = module.exports = {
-    initialize: function () {
-        var settings = db.retrieveObject("geosettings");
-        if (settings) {
-            utils.forEach(_positionInfo, function (value, key) {
-                _positionInfo[key] = parseFloat(settings.position[key] || value);
-            });
-
-            self.timeout = settings.timeout;
-            self.delay = settings.delay || 0;
-
-        }
-    },
-
-    getPositionInfo: function () {
-        var pi = utils.copy(_positionInfo);
-        pi.timeStamp = new Date();
-
-        return pi;
-    },
-
-    updatePositionInfo: function (newPositionInfo, delay, timeout) {
-        if (!_validatePositionInfo(newPositionInfo)) {
-            exception.raise(exception.types.Geo, "invalid positionInfo object");
-        }
-
-        _positionInfo = utils.copy(newPositionInfo);
-        _positionInfo.timeStamp = new Date();
-
-        self.delay = delay || 0;
-        self.timeout = timeout;
-
-        db.saveObject("geosettings", _serialize({
-            position: _positionInfo,
-            delay: self.delay,
-            timeout: self.timeout
-        }));
-
-        event.trigger("PositionInfoUpdatedEvent", [_positionInfo]);
-    },
-
-    timeout: false,
-    delay: 0,
-    map: {}
-};
-
-});
 ripple.define('honeypot', function (ripple, exports, module) {
 /*
  *
@@ -29766,7 +29674,7 @@ ripple.define('index', function (ripple, exports, module) {
 var omgwtf = ripple('omgwtf'),
     db = ripple('db'),
     xhr = ripple('xhr'),
-    geo = ripple('geo'),
+    //geo = ripple('geo'),
     fs = ripple('fs'),
     platform = ripple('platform'),
     emulatorBridge = ripple('emulatorBridge'),
@@ -29774,6 +29682,8 @@ var omgwtf = ripple('omgwtf'),
     _console = ripple('console'),
     widgetConfig = ripple('widgetConfig'),
     deviceSettings = ripple('deviceSettings'),
+    pluginExtensions = ripple('pluginExtensions'),
+    pluginUi = ripple('pluginUi'),
     ui = ripple('ui'),
     appcache = ripple('appcache'),
     _self;
@@ -29869,13 +29779,15 @@ _self = {
              .andThen(appcache.initialize, appcache)
              .andThen(db.initialize, db)
              .andThen(xhr.initialize, xhr)
-             .andThen(geo.initialize, geo)
+             .andThen(pluginExtensions.initialize, pluginExtensions)
+             // .andThen(geo.initialize, geo)
              .andThen(fs.initialize, fs)
              .andThen(platform.initialize, platform)
              .andThen(devices.initialize, devices)
              .andThen(setUserAgent) // See TODO above function def
              .andThen(widgetConfig.initialize, widgetConfig)
              .andThen(deviceSettings.initialize, deviceSettings)
+             .andThen(pluginUi.initialize, pluginExtensions)
              .andThen(ui.initialize, ui)
              .start(booted);
     }
@@ -32723,6 +32635,46 @@ module.exports = {
 };
 
 });
+ripple.define('platform/cordova/2.0.0/bridge/battery', function (ripple, exports, module) {
+/*
+ *
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ *
+ */
+
+var constants = ripple('constants'),
+    db = ripple('db');
+
+module.exports = {
+    start: function(win, fail, args) {
+        var batteryLevel = db.retrieve(constants.BATTERY_STATUS.BATTERY_STATUS_KEY) || 100;
+        var isPlugged = db.retrieve(constants.BATTERY_STATUS.IS_PLUGGED_KEY) || false;
+        var info = {
+            level: batteryLevel,
+            isPlugged: isPlugged
+        };
+        win(info);
+    },
+
+    stop: function(win, fail, args) {}
+};
+
+});
 ripple.define('platform/cordova/2.0.0/bridge/camera', function (ripple, exports, module) {
 /*
  *
@@ -33485,97 +33437,6 @@ module.exports = {
 };
 
 });
-ripple.define('platform/cordova/2.0.0/bridge/geolocation', function (ripple, exports, module) {
-/*
- *
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
- *
- */
-var event = ripple('event'),
-    geo = ripple('geo'),
-    utils = ripple('utils'),
-    PositionError = ripple('platform/w3c/1.0/PositionError'),
-    _watches = {},
-    _current = {
-        "latitude": 43.465187,
-        "longitude": -80.522372,
-        "altitude": 100,
-        "accuracy": 150,
-        "altitudeAccuracy": 80,
-        "heading": 0,
-        "velocity": 0,
-    };
-
-function _getCurrentPosition(win, fail) {
-    if (geo.timeout) {
-        if (fail) {
-            var positionError = new PositionError();
-
-            positionError.code = PositionError.TIMEOUT;
-            positionError.message = "position timed out";
-            fail(positionError);
-        }
-    }
-    else {
-        win(geo.getPositionInfo());
-    }
-}
-
-event.on("PositionInfoUpdatedEvent", function (pi) {
-    _current.latitude = pi.latitude;
-    _current.longitude = pi.longitude;
-    _current.altitude = pi.altitude;
-    _current.accuracy = pi.accuracy;
-    _current.altitudeAccuracy = pi.altitudeAccuracy;
-    _current.heading = pi.heading;
-    _current.velocity = pi.speed;
-
-    utils.forEach(_watches, function (watch) {
-        try {
-            _getCurrentPosition(watch.win, watch.fail);
-        } catch (e) {
-            console.log(e);
-        }
-    });
-});
-
-module.exports = {
-    getLocation: function (success, error) {
-        _getCurrentPosition(success, error);
-    },
-
-    addWatch: function (success, error, args) {
-        _watches[args[0]] = {
-            win: success,
-            fail: error
-        };
-        _getCurrentPosition(success, error);
-    },
-
-    clearWatch: function (success, error, args) {
-        delete _watches[args[0]];
-        if (success && typeof (success) === 'function') {
-            success();
-        }
-    }
-};
-
-});
 ripple.define('platform/cordova/2.0.0/bridge/globalization', function (ripple, exports, module) {
 /*
  *
@@ -34233,6 +34094,7 @@ var _prompt = ripple('ui/plugins/exec-dialog'),
     emulator = {
         "App": ripple('platform/cordova/2.0.0/bridge/app'),
         "Accelerometer": ripple('platform/cordova/2.0.0/bridge/accelerometer'),
+        "Battery" : ripple('platform/cordova/2.0.0/bridge/battery'),
         "Compass": ripple('platform/cordova/2.0.0/bridge/compass'),
         "Camera": ripple('platform/cordova/2.0.0/bridge/camera'),
         "Capture": ripple('platform/cordova/2.0.0/bridge/capture'),
@@ -34719,7 +34581,7 @@ module.exports = {
             }
         },
         "isDayLightSavingsTime": {
-            "name": "Is DayLight saves time",
+            "name": "Is daylight saving time",
             "control": {
                 "type": "checkbox",
                 value: false
@@ -34831,7 +34693,8 @@ module.exports = {
     plugins: [
         "accelerometer",
         "deviceSettings",
-        "geoView",
+        // "geoView", INTC
+        "batteryStatus",
         "widgetConfig",
         "platformEvents"
     ]
@@ -35614,6 +35477,7 @@ module.exports = {
                 cordova.define.remove("cordova/exec");
                 cordova.define("cordova/exec", function (require, exports, module) {
                     module.exports = bridge.exec;
+                    module.exports.init = module.exports.init || function(){cordova.require('cordova/channel').onNativeReady.fire();}; // RIPPLE-69 adding cordova-3.6.x support
                 });
             };
 
@@ -35626,7 +35490,7 @@ module.exports = {
         // scandit barcode scanner @see https://github.com/Scandit/BarcodeScannerPlugin
         bridge.add("ScanditSDK", ripple('platform/cordova/3.0.0/bridge/scanditsdk'));
 
-        // honeypot.monitor(win, "cordova").andRun(get, set);
+        honeypot.monitor(win, "cordova").andRun(get, set);
 
         //HACK: BlackBerry does vibration different
         if (device.manufacturer === "BlackBerry") {
@@ -48683,6 +48547,545 @@ _self = {
 module.exports = _self;
 
 });
+ripple.define('pluginExtensions', function (ripple, exports, module) {
+// Copyright Intel Corporation 2014.  All Rights Reserved.
+/*
+ *
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ *
+ */
+
+// This module is responsible for bringing in the emulator contributions from plugins.
+// We find the plugin contributions by enumerating the www/plugins directory in the program under test.
+// Files that appear below www/plugins/<pluginid>/src/ripple/emulator are considered part of the emulator.
+// Files in that directory behave as if they were in the ripple client/lib source directory.
+// Files that appear below www/plugins/<pluginid>/src/ripple/emulator/ui are considered to be UI elements
+// to be added dynamically.  Each UI element must have a JavaScript file and a like-named directory,
+// e.g. something and something.js.  The contents of the directory determine whether the UI element is a
+// dialog, panel, or overlay UI.  They are distinguished by the name of the HTML file, which must be
+// overlay.html, panel.html, or dialog.html. An accompanying CSS file is also permitted, which is
+// always called overlay.css.
+//
+// Plain JavaScript files are brought in simply by constructing a <script> tag that refers to the file
+// and appending it to the emualtor UI.  To facilitate this process, we invented a new route in the
+// emulator server.  Normally files in the emulator source base are referenced as /ripple/assets".
+// We can't do that here, because the files are relative to the program under test.
+// However, we don't want to reference them directly as that would require us to have the plugin
+// author include the "ripple.define" wrapper, and emulator code normally does not require this.
+// So we use the new route, "/ripple/extensions/relpath", where relpath is interpreted as relative
+// to the project root, typically the platform/ripple/www folder.
+//
+// For example, to bring in the file
+// <PlatformsDirectory>/rippple/www/plugins/org.apache.cordova.geolocation/src/ripple/emulator/geo.js,
+// we would create a <script> tag whose src= attribte was
+// /ripple/extensions/plugins/org.apache.cordova.geolocation/src/ripple/emulator.geo.js
+//
+// UI elements are more complicated, because they must be dynamically integrated into the UI.
+// This problem is handled in ui.js.
+
+var _plugins = [];
+var _extensionFiles = [];
+var _pluginsRoot = 'plugins'; // 'platforms/ripple/www/plugins';
+var _UiPlugins;
+
+function createNewXHR(url) {
+    var req = new XMLHttpRequest();
+    req.open('GET', url, true);
+    return req;
+}
+
+var _self = {
+    initialize: function (prev,baton) {
+
+        // Find the plugins folder and enumerate its contents
+        // for each plain file in the plugin folder, construct a <script> tag and append to the emulator's body.
+        // <script src="/ripple/extensions/org.apache.cordova.geolocation/src/ripple/emulator/geo.js" type="text/javascript"></script>
+
+        var req;
+        baton.take();
+        _plugins = [];
+        _extensionFiles = [];
+        _UiPlugins = [];
+        req = createNewXHR('/ripple/directory/' + _pluginsRoot);
+        req.onreadystatechange = function () {
+            var pluginRequest, pluginsLen, pluginRequestDir, requestsToReceive, i;
+
+            if (req.readyState !== 4) return; // request isn't finished yet
+
+            // We have the response, which should be a string of the form
+            // "id1/id2/.../idn", but must ignore "ripple.json".
+            if ((req.status === 200) && (req.responseText !== 'ripple.json') && (req.responseText !== '')) {
+
+                _plugins = req.responseText.replace(/(\/ripple.json|ripple.json\/)/,'').split('/');
+
+                // Iterate through the plugins and issue an XMLHttpRequest
+                // for each one to discover what additional emulation
+                // files are present in that plugin.  We use a helper
+                // function to create a separate function to handle
+                // the response to each request.
+
+                var pluginRequestDirHelper = function(requestIndex) {
+
+                    return function() {
+                        var files, filesLen, i, scriptElement, scriptsToLoad, extensionFilesLen, responseWithoutUi, scriptModules;
+
+                        var scriptLoadHelper = function(requestIndex) {
+                            return function() {
+                                var obj;
+                                // Call the initialization function, if it exists
+                                try {
+                                    obj = ripple(scriptModules[requestIndex]);
+                                    if (obj && obj.initialize) {
+                                        console.log('Initialized plugin extension ' + scriptModules[requestIndex] +
+                                            ' from ' + _extensionFiles[requestIndex]);
+                                        obj.initialize();
+                                    }
+                                } catch (e) {
+                                    console.log('Error initializing plugin extension ' + scriptModules[requestIndex] +
+                                       ' from ' + _extensionFiles[requestIndex]);
+                                    console.log('Error was ', e);
+                                }
+                                scriptsToLoad -= 1;
+                                if (scriptsToLoad === 0) {
+                                    // When the last script is loaded we can pass the baton
+                                    baton.pass();
+                                }
+                            };
+                        };
+
+                        if (pluginRequest[requestIndex].readyState !== 4) return; // request isn't done yet
+
+                        // response string may contain "ui" meaning there is extension UI
+                        if ((pluginRequest[requestIndex].status === 200)  &&
+                            (pluginRequest[requestIndex].responseText !== '')) {
+
+                            if (pluginRequest[requestIndex].responseText === 'ui') {
+                                _UiPlugins.push(pluginRequestDir[requestIndex] + '/ui'); // has UI and nothing else
+                            } else {
+                                responseWithoutUi = pluginRequest[requestIndex].responseText.replace(/(\/ui|ui\/)/,'');
+                                if (responseWithoutUi !== pluginRequest[requestIndex].responseText) {
+                                    _UiPlugins.push(pluginRequestDir[requestIndex] + '/ui');
+                                }
+
+                                files = responseWithoutUi.split('/');
+                                filesLen = files.length;
+                                for (i = 0; i < filesLen; i += 1) {
+                                    _extensionFiles.push(pluginRequestDir[requestIndex] + '/' + files[i]);
+                                }
+                            }
+
+                        }
+
+                        // Having combined the contribution of that plugin request
+                        // to the _extensionFiles array, see if this is the last
+                        // pluginRequest to complete.  If so, then start the process
+                        // of adding the extension files to the document.
+                        // Note: the order of loading of <script> tags is indeterminate,
+                        // but the main point is that all these files get loaded before
+                        // any of the script files that support UI for the plugins.
+                        // After the script is loaded, we call the initialize function
+                        // of that newly registered ripple object (if it exists).
+
+                        requestsToReceive -= 1;
+                        if (requestsToReceive === 0) {
+                            // Got the data from the last plugin: time to create script tags
+                            // for all the files we need from all the plugins
+                            var body = document.getElementsByTagName('body')[0];
+                            scriptsToLoad = extensionFilesLen = _extensionFiles.length;
+                            if (scriptsToLoad === 0) {
+                                baton.pass();
+                                return;
+                            }
+                            scriptModules = [];
+                            for (i = 0; i < extensionFilesLen; i += 1) {
+                                scriptElement = document.createElement('script');
+                                scriptModules.push(_extensionFiles[i].replace(/.*\//, '').replace(/\.js/,''));
+                                scriptElement.src = 'ripple/extensions/' + _extensionFiles[i];
+                                scriptElement.setAttribute('type', 'text/javascript');
+                                scriptElement.onload = scriptLoadHelper(i);
+                                body.appendChild(scriptElement);
+                            }
+                        }
+                    }; // function returned from pluginRequestDirHelper function
+                }; // pluginRequestDirHelper function
+
+                pluginRequest = [];
+                pluginRequestDir = [];
+                requestsToReceive = pluginsLen = _plugins.length;
+
+                for (i = 0; i < pluginsLen; i += 1) {
+                    pluginRequestDir[i] = _pluginsRoot + '/' + _plugins[i] + '/src/ripple/emulator';
+                    pluginRequest[i] = createNewXHR('/ripple/directory/' + pluginRequestDir[i]);
+                    pluginRequest[i].onreadystatechange = pluginRequestDirHelper(i);
+                    pluginRequest[i].send();
+                }
+
+            } else {
+                // GET failed or found no plugins: just pass the baton
+                baton.pass();
+            }
+        };
+        req.send();
+    },
+
+    getPlugins: function() {
+        return _plugins;
+    },
+
+    getUiPlugins: function() {
+        return _UiPlugins;
+    }
+};
+
+module.exports = _self;
+
+});
+ripple.define('pluginUi', function (ripple, exports, module) {
+// Copyright Intel Corporation 2014.  All Rights Reserved.
+/*
+ *
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ *
+ */
+
+// This module is responsible for bringing in the emulator Ui contributions from plugins.
+// We find the plugin Ui contributions by enumerating the www/plugins directory in the program under test.
+// Files that appear below src/ripple/emulator/ui are considered to be dynamically added UI elements.
+// Each UI element must have a JavaScript file and/or a like-named directory, e.g. something and/or
+// something.js.  The html file in the directory determines whether the UI element is a
+// dialog, panel, or overlay UI, and must named exactly overlay.html, panel.html, or dialog.html.
+// An accompanying CSS file is also permitted, which is always called overlay.css.
+// It is also possible to have other files, e.g. an images folder, but they are ignored here.
+//
+// When a Ui element is found, the corresponding JavaScript file must be added to the program by appending
+// a <script> tab to the emulator document's body.  The CSS assets must be brought in as a <link> tag,
+// which is appended to the emulator document's <head>.
+//
+// This just leaves the HTML assets to deal with.
+// Panel.html files are added to the <div> whose id is "panel-views", and similarly for the others.
+// Note that it is necessary to wait for these HTML files to load before proceeding, because
+// otherwise you will get transient errors during UI initialization (looks for IDs before they exist).
+
+
+var pluginExtensions = ripple('pluginExtensions');
+
+var uiPluginModules;
+
+function createNewXHR(url) {
+    var req = new XMLHttpRequest();
+    req.open('GET', url, true);
+    return req;
+}
+
+function endsWith(str, suffix) {
+    return str.indexOf(suffix, str.length - suffix.length) !== -1;
+}
+
+var _self = {
+
+    // Enumerate and incorporate the plugin UI components discovered earlier by pluginExtensions.js.
+    // After we know what files are needed, we incorporate them into the DOM
+    // by the following steps, which must be done in the following order:
+    //
+    // 1) Create a <link> tag for each overlay.css file.  For example:
+    // <link href="plugins/org.apache.cordova.geolocation/src/ripple/emulator/ui/geoView/overlay.css"
+    //   type="text/css" rel="stylesheet" />
+    //
+    // 2) Read and add the HTML contributions for the plugins into the appropriate section of the document.
+    // For example, we would add the contents of
+    // plugins/org.apache.cordova.geolocation/src/ripple/emulator/ui/geoView/panel.html
+    // to the panel-views section.  Files named overview.html would be appended to the overlay-views container,
+    // and files named dialog.html would be appended to the dialog-views container.
+    // Note that we must read the contents of this HTML with an XHR and parse it ourselves.
+    // There is no construct like <script> or <link> that adds HTML content to the current document.
+    // The closest thing we have is <iframe>, but this creates a separate document.
+    //
+    // 3) For each plain file in the emulator/ui folder, construct a script tag
+    // that includes this file into the emulator document.  For example:
+    // <script src="/ripple/uiextensions/plugins/org.apache.cordova.geolocation/src/ripple/emulator/ui/geoView.js"
+    //   type="text/javascript"></script>
+    //
+    // This defines an object that can be referred to as ripple('ui/plugins/geoView').
+    //
+    // After this is done, we need to update our bookkeeping to indicate that
+    // the relevant panels, dialogs, and overlay views are added to the current
+    // configuration, so they will be picked up by the natural ui initialization.
+    //
+    // Note that we must wait until all this new HTML5 is fully loaded
+    // before we can pass the baton to the next step.
+
+    initialize: function (prev,baton) {
+        var pluginUiExtensions,
+            pluginUiExtensionsLen,
+            pluginRequest,
+            extensionDirs,
+            extensionJs,
+            extensionHtml,
+            extensionCss,
+            extensionDirRequest,
+            extensionDirRequestsToReceive, 
+            pluginHtmlRequest,
+            requestsToReceive,
+            filesToLoad,
+            i;
+
+        function loadCounter() {
+            filesToLoad -= 1;
+            if (filesToLoad === 0) baton.pass();
+        }
+        function cssLoadCounter() {
+            loadCounter();
+        }
+        function jsLoadCounter() {
+            loadCounter();
+        }
+        function htmlLoadCounter() {
+            loadCounter();
+        }
+
+        function loadStylesheet(src) {
+            var head, linkElement;
+            try {
+                head = document.getElementsByTagName('head')[0];
+                linkElement = document.createElement('link');
+                linkElement.setAttribute("href", src);
+                linkElement.setAttribute("type", "text/css");
+                linkElement.setAttribute("rel", "stylesheet");
+                linkElement.onload = cssLoadCounter;
+                head.appendChild(linkElement);
+            } catch (e) {
+                console.log("Error attempting to load overlay.css file from " + src);
+                console.log("Error: " + e.toString());
+                cssLoadCounter(); // Done with this CSS file
+            }
+        }
+
+        baton.take();
+
+        // Get the array of UI extensions we found when we initialized pluginExtensions.
+        pluginUiExtensions = pluginExtensions.getUiPlugins();
+        pluginUiExtensionsLen = pluginUiExtensions.length;
+
+        // If there are no UI extensions then we're done.
+        if (pluginUiExtensionsLen === 0) {
+            uiPluginModules = [];
+            baton.pass();
+            return;
+        }
+
+        // The pluginUiExtensions array consists of the names of the "ui" folders below
+        // the various plugins that contribute UI.  We need to enumerate the contents of
+        // these directories and then the contents of the subdirectories therein.
+        // For example, starting from plugins/org.apache.cordova.geolocation/src/emulator/ui,
+        // we enumerate its contents and find "geoView" and "geoView.js".  We enumerate the
+        // contents of plugins/org.apache.cordova.geolocation/src/emulator/ui/geoView,
+        // and we find overlay.css and panel.html.
+
+        var extensionDirHelper = function(requestIndex) {
+            return function() {
+                var files, filesLen, i, extensionJsLen, extensionHtmlLen, extensionCssLen, scriptElement;
+
+                var htmlHelper = function(requestIndex) {
+                    return function() {
+                        var container;
+                        if (pluginHtmlRequest[requestIndex].readyState !== 4) return; // request isn't done yet
+
+                        if (pluginHtmlRequest[requestIndex].status !== 200) { 
+                            htmlLoadCounter();
+                            return; // done with this file
+                        }
+
+                        // We have the HTML for a <div> in hand.
+                        // Choose the right element to add it to based on the original filename
+                        if (endsWith(extensionHtml[requestIndex], 'panel.html')) {
+                            container = $('#panel-views');
+                        } else if (endsWith(extensionHtml[requestIndex], 'overlay.html')) {
+                            container = $('#overlay-views');
+                        } else if (endsWith(extensionHtml[requestIndex], 'dialog.html')) {
+                            container = $('#dialog-views');
+                        } else {
+                            // ?? Have something but don't know where to put it.  Fail.
+                            console.log("Unknown UI extension html file: " + extensionHtml[requestIndex]);
+                            htmlLoadCounter();
+                            return;
+                        }
+
+                        try {
+                            container.unbind().bind('DOMSubtreeModified', htmlLoadCounter);
+                            container.append(pluginHtmlRequest[requestIndex].responseText);
+                        } catch(e) {
+                            htmlLoadCounter();
+                            console.log("Error parsing and appending emulator UI HTML");
+                            console.log("HTML was obtained from " + extensionHtml[requestIndex]);
+                            console.log("Error: " + e.toString());
+                            console.log("Document:\n");
+                            console.log(pluginHtmlRequest[requestIndex].responseText);
+                        }
+                    };
+                };
+
+                if (extensionDirRequest[requestIndex].readyState !== 4) return; // request isn't done yet
+
+                if (extensionDirRequest[requestIndex].status === 200) { 
+                    files = extensionDirRequest[requestIndex].responseText.split('/');
+                } else {
+                    files = [];
+                }
+                filesLen = files.length; 
+                
+                // The files array should consist of one .html file and possibly an overlay.css file
+                // and other files, e.g. images that we can ignore.
+
+                // We generate two arrays: extensionCss and extensionHtml.
+                for (i = 0; i < filesLen; i += 1) {
+                    if (endsWith(files[i], '.css')) {
+                        extensionCss.push(extensionDirs[requestIndex] + '/' + files[i]);
+                    } else if (endsWith(files[i], '.html')) {
+                        extensionHtml.push(extensionDirs[requestIndex] + '/' + files[i]);
+                    }
+                }
+
+                extensionDirRequestsToReceive -= 1;
+                if (extensionDirRequestsToReceive === 0) {
+
+                    // Now we have the data from all the ui subfolders.
+                    // This means we have identified all the files to be processed.
+
+                    extensionJsLen = extensionJs.length;
+                    extensionHtmlLen = extensionHtml.length;
+                    extensionCssLen = extensionCss.length;
+                    filesToLoad = extensionCssLen + extensionJsLen + extensionHtmlLen;
+
+                    // Step 1: load the CSS
+                    // Note that the CSS files are loaded relative via the normal source path
+                    // route, which maps to the project root in the prepare/ripple/www folder.
+                    // To compensate for this, we strip off that part of the path.
+                    for (i = 0; i < extensionCssLen; i += 1) {
+                        loadStylesheet(extensionCss[i].replace(/platforms\/ripple\/www\//, ''));
+                    }
+
+                    // Step 2: load the HTML
+                    // Note that HTML files are loaded relative via the normal source path
+                    // route, which maps to the project root in the prepare/ripple/www folder.
+                    // To compensate for this, we strip off that part of the path.
+                    pluginHtmlRequest = [];
+                    for (i = 0; i < extensionHtmlLen; i += 1) {
+                        pluginHtmlRequest[i] = createNewXHR(extensionHtml[i].replace(/platforms\/ripple\/www\//, ''));
+                        pluginHtmlRequest[i].onreadystatechange = htmlHelper(i);
+                        pluginHtmlRequest[i].send();
+                    }
+
+                    // Step 3: load the JavaScript
+                    var body = document.getElementsByTagName('body')[0];
+                    for (i = 0; i < extensionJsLen; i += 1) {
+                        scriptElement = document.createElement('script');
+                        scriptElement.src = 'ripple/uiextensions/' + extensionJs[i];
+                        scriptElement.setAttribute('type', 'text/javascript');
+                        scriptElement.onload = jsLoadCounter;
+                        body.appendChild(scriptElement);
+                        uiPluginModules.push(extensionJs[i].replace(/.*\//, '').replace(/\.js/, ''));
+                    }
+                }
+            }; // function returned from helper function
+        };
+
+        var pluginRequestHelper = function(requestIndex) {
+            return function() {
+                var files, filesLen, i, extensionDirsLen;
+
+                if (pluginRequest[requestIndex].readyState !== 4) return; // request isn't done yet
+
+                if (pluginRequest[requestIndex].status === 200) { 
+                    files = pluginRequest[requestIndex].responseText.split('/');
+                    filesLen = files.length; 
+                }
+                
+                // The files array should consist of names of .js files and
+                // names of directories.  Usually they are paired, but
+                // it is possible to have one without the other.
+
+                // We generate two arrays: extensionJs and extensionDirs.
+                for (i = 0; i < filesLen; i += 1) {
+                    if (endsWith(files[i], '.js')) {
+                        extensionJs.push(pluginUiExtensions[requestIndex] + '/' + files[i]);
+                    } else {
+                        extensionDirs.push(pluginUiExtensions[requestIndex] + '/' + files[i]);
+                    }
+                }
+
+                requestsToReceive -= 1;
+                if (requestsToReceive === 0) {
+
+                    // Now we have the data from all the ui folders.
+                    // We need to enumerate the contents of extensionDirs.
+                    // This is basically the same thing all over again.
+
+                    extensionDirsLen = extensionDirs.length;
+                    extensionHtml = [];
+                    extensionCss = [];
+                    extensionDirRequest = [];
+                    extensionDirRequestsToReceive = extensionDirsLen;
+                    for (i = 0; i < extensionDirsLen; i += 1) {
+                        extensionDirRequest[i] = createNewXHR('/ripple/directory/' + extensionDirs[i]);
+                        extensionDirRequest[i].onreadystatechange = extensionDirHelper(i);
+                        extensionDirRequest[i].send();
+                    }
+                }
+            }; // function returned from helper function
+        }; // helper function
+
+        uiPluginModules = [];
+        pluginRequest = [];
+        requestsToReceive = pluginUiExtensionsLen;
+        extensionJs = [];
+        extensionDirs = [];
+
+        for (i = 0; i < pluginUiExtensionsLen; i += 1) {
+            pluginRequest[i] = createNewXHR('/ripple/directory/' + pluginUiExtensions[i]);
+            pluginRequest[i].onreadystatechange = pluginRequestHelper(i);
+            pluginRequest[i].send();
+        }
+    },
+
+    getUiPluginModules: function () {
+        return uiPluginModules;
+    } 
+
+};
+
+module.exports = _self;
+
+});
 ripple.define('resizer', function (ripple, exports, module) {
 /*
  *
@@ -49295,6 +49698,109 @@ module.exports = {
         jQuery("#accelerometer-shake").click(_shakeDevice);
 
         event.on("AccelerometerInfoChangedEvent", _updateAccelerometerPanel, this);
+    }
+};
+
+});
+ripple.define('ui/plugins/batteryStatus', function (ripple, exports, module) {
+/*
+ *
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ *
+ */
+
+var constants = ripple('constants'),
+    db = ripple('db'),
+    batteryLevel = document.getElementById(constants.BATTERY_STATUS.LEVEL_VALUE),
+    batteryLevelLabel = document.getElementById(constants.BATTERY_STATUS.LEVEL_LABEL),
+    isPlugged = document.getElementById(constants.BATTERY_STATUS.IS_PLUGGED_CHECKBOX);
+
+function _getCurrentStatus() {
+    var status = {
+        level: batteryLevel.value,
+        isPlugged: isPlugged.checked
+    };
+    return status;
+}
+
+function _saveStatus(status) {
+    if (status) {
+        db.save(constants.BATTERY_STATUS.BATTERY_STATUS_KEY, status.level);
+        db.save(constants.BATTERY_STATUS.IS_PLUGGED_KEY, status.isPlugged);
+    }
+}
+
+function _updateUI(status) {
+    if (status) {
+        batteryLevel.value = status.level;
+        batteryLevelLabel.innerHTML = status.level + " %";
+        isPlugged.checked = status.isPlugged;
+    }
+}
+
+function _fireBatteryEvent(status) {
+    var win = ripple('emulatorBridge').window();
+
+    if (!win.cordova) {
+        throw "You must have cordova.js included in your projects, to be able to trigger events";
+    } else if (status) {
+        win.cordova.fireWindowEvent("batterystatus", status);
+
+        var level = parseInt(status.level);
+        if (level === 20 || level === 5) {
+            if (level === 20) {
+                win.cordova.fireWindowEvent("batterylow", status);
+            } else {
+                win.cordova.fireWindowEvent("batterycritical", status);
+            }
+        }
+    }
+}
+
+function _processStatusChanged() {
+    var status = _getCurrentStatus();
+    _saveStatus(status);
+    _updateUI(status);
+    _fireBatteryEvent(status);
+}
+
+module.exports = {
+    panel: {
+        domId: "battery-status-container",
+        collapsed: true,
+        pane: "left"
+    },
+
+    initialize: function() {
+        jQuery("#" + constants.BATTERY_STATUS.LEVEL_VALUE).bind("mouseup", function() {
+            _processStatusChanged();
+        });
+
+        jQuery("#" + constants.BATTERY_STATUS.IS_PLUGGED_CHECKBOX).bind("click", function() {
+            _processStatusChanged();
+        });
+
+        var status = {
+            level: db.retrieve(constants.BATTERY_STATUS.BATTERY_STATUS_KEY) || 100,
+            isPlugged: db.retrieve(constants.BATTERY_STATUS.IS_PLUGGED_KEY) || false,
+        };
+
+        _updateUI(status);
     }
 };
 
@@ -50588,490 +51094,6 @@ module.exports = {
             return platform;
         }).length > 1) {
             _initializeFirstRunCheck();
-        }
-    }
-};
-
-});
-ripple.define('ui/plugins/geoView', function (ripple, exports, module) {
-/*
- *
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
- *
- */
-var constants = ripple('constants'),
-    geo = ripple('geo'),
-    db = ripple('db'),
-    event = ripple('event'),
-    utils = ripple('utils'),
-    platform = ripple('platform'),
-    _gpsMapZoomLevel;
-
-function _updateGpsMap() {
-    var positionInfo = geo.getPositionInfo(),
-            mapContainer = document.getElementById(constants.GEO.OPTIONS.MAP_CONTAINER),
-            geoZoomValue = document.getElementById(constants.GEO.MAP_ZOOM_LEVEL_CONTAINER);
-
-    if (mapContainer) {
-        geo.map.setCenter(new OpenLayers.LonLat(positionInfo.longitude, positionInfo.latitude) // Center of the map
-            .transform(
-              new OpenLayers.Projection("EPSG:4326"), // transform from WGS 1984
-              new OpenLayers.Projection("EPSG:900913") // to Spherical Mercator Projection
-            ),
-            _gpsMapZoomLevel,
-            true // don't trigger dragging events
-        );
-    }
-
-    if (geoZoomValue) {
-        geoZoomValue.innerHTML = _gpsMapZoomLevel;
-    }
-}
-
-function _updateGpsMapZoom(goUp) {
-    if (goUp && _gpsMapZoomLevel < constants.GEO.MAP_ZOOM_MAX) {
-        _gpsMapZoomLevel++;
-    }
-    else if (!goUp && _gpsMapZoomLevel > constants.GEO.MAP_ZOOM_MIN) {
-        _gpsMapZoomLevel--;
-    }
-    document.getElementById(constants.GEO.MAP_ZOOM_LEVEL_CONTAINER).innerHTML = _gpsMapZoomLevel;
-
-    _updateGpsMap();
-
-    db.save(constants.GEO.MAP_ZOOM_KEY, _gpsMapZoomLevel);
-}
-
-function _getTextHeading(heading) {
-    if (heading >= 337.5 || (heading >= 0 && heading <= 22.5)) {
-        return 'N';
-    }
-
-    if (heading >= 22.5 && heading <= 67.5) {
-        return 'NE';
-    }
-
-    if (heading >= 67.5 && heading <= 112.5) {
-        return 'E';
-    }
-    if (heading >= 112.5 && heading <= 157.5) {
-        return 'SE';
-    }
-
-    if (heading >= 157.5 && heading <= 202.5) {
-        return 'S';
-    }
-
-    if (heading >= 202.5 && heading <= 247.5) {
-        return 'SW';
-    }
-
-    if (heading >= 247.5 && heading <= 292.5) {
-        return 'W';
-    }
-
-    if (heading >= 292.5 && heading <= 337.5) {
-        return 'NW';
-    }
-}
-
-module.exports = {
-    panel: {
-        domId: "gps-container",
-        collapsed: true,
-        pane: "right"
-    },
-
-    initialize: function () {
-        var GEO_OPTIONS = constants.GEO.OPTIONS,
-            positionInfo = geo.getPositionInfo(),
-            positionEvent = "PositionInfoUpdatedEvent",
-            latitude = document.getElementById(GEO_OPTIONS.LATITUDE),
-            longitude = document.getElementById(GEO_OPTIONS.LONGITUDE),
-            altitude = document.getElementById(GEO_OPTIONS.ALTITUDE),
-            accuracy = document.getElementById(GEO_OPTIONS.ACCURACY),
-            altitudeAccuracy = document.getElementById(GEO_OPTIONS.ALTITUDE_ACCURACY),
-            heading = document.getElementById(GEO_OPTIONS.HEADING),
-            speed = document.getElementById(GEO_OPTIONS.SPEED),
-            cellID = document.getElementById(GEO_OPTIONS.CELL_ID),
-            delay = document.getElementById(GEO_OPTIONS.DELAY),
-            delayLabel = document.getElementById(GEO_OPTIONS.DELAY_LABEL),
-            headingLabel = document.getElementById(GEO_OPTIONS.HEADING_LABEL),
-            headingMapLabel = document.getElementById(GEO_OPTIONS.HEADING_MAP_LABEL),
-            timeout = document.getElementById(GEO_OPTIONS.TIMEOUT),
-            gpxMultiplier = document.getElementById(GEO_OPTIONS.GPXMULTIPLIER),
-            gpxReplayStatus = document.getElementById(GEO_OPTIONS.GPXREPLAYSTATUS),
-            gpxGo = $(document.getElementById(GEO_OPTIONS.GPXGO)).find("span")[0],
-            mapMarker = document.getElementById(GEO_OPTIONS.MAP_MARKER),
-            mapContainer = document.getElementById(GEO_OPTIONS.MAP_CONTAINER),
-            map = null,
-            track = [],
-            _replayingGpxFile = false,
-            _haltGpxReplay = false;
-
-
-        function updateGeo() {
-            geo.updatePositionInfo({
-                latitude: parseFloat(latitude.value),
-                longitude: parseFloat(longitude.value),
-                altitude: parseInt(altitude.value, 10),
-                accuracy: parseInt(accuracy.value, 10),
-                altitudeAccuracy: parseInt(altitudeAccuracy.value, 10),
-                heading: heading.value ? parseFloat(heading.value) : 0, // HACK: see techdebt http://www.pivotaltracker.com/story/show/5478847
-                speed: speed.value ? parseInt(speed.value, 10) : 0, // HACK: see techdebt http://www.pivotaltracker.com/story/show/5478847
-                cellID: cellID.value,
-                timeStamp: new Date()
-            },
-            delay.value,
-            timeout.checked);
-        }
-
-        function updateHeadingValues() {
-            var headingDeg = parseFloat(heading.value),
-                headingText = _getTextHeading(parseFloat(heading.value));
-
-            headingLabel.innerHTML = headingText;
-            headingMapLabel.innerHTML = headingText + "</br>" + headingDeg + "&deg;";
-            mapMarker.setAttribute("style", "-webkit-transform: rotate(" + headingDeg + "deg);");
-        }
-
-        function updateValsFromMap() {
-            var center = geo.map.getCenter().transform(
-                new OpenLayers.Projection("EPSG:900913"),
-                new OpenLayers.Projection("EPSG:4326"));
-            longitude.value = center.lon;
-            latitude.value = center.lat;
-            updateGeo();
-        }
-
-        function initializeValues() {
-            latitude.value =          positionInfo.latitude;
-            longitude.value =         positionInfo.longitude;
-            altitude.value =          positionInfo.altitude;
-            accuracy.value =          positionInfo.accuracy;
-            altitudeAccuracy.value =  positionInfo.altitudeAccuracy;
-            cellID.value =            positionInfo.cellID;
-            delay.value = document.getElementById(GEO_OPTIONS.DELAY_LABEL).innerHTML = geo.delay || 0;
-            if (geo.timeout) {
-                timeout.checked = true;
-            }
-            updateHeadingValues();
-        }
-
-        function initMap() {
-            // override image location so we don't have to include image assets
-            OpenLayers.ImgPath = 'http://openlayers.org/api/img/';
-
-            // init map
-            geo.map = new OpenLayers.Map(mapContainer, {controls: [], theme: null});
-
-            // add controls and OSM map layer
-            geo.map.addLayer(new OpenLayers.Layer.OSM());
-            geo.map.addControl(new OpenLayers.Control.Navigation());
-
-            // override behaviour of click to pan and double click to zoom in
-            var clickHandler = new OpenLayers.Handler.Click(
-                this,
-                {
-                    click: function (e) {
-                        var lonlat = geo.map.getLonLatFromViewPortPx(e.xy);
-                        geo.map.panTo(new OpenLayers.LonLat(lonlat.lon, lonlat.lat), _gpsMapZoomLevel);
-                    },
-
-                    dblclick: function () {
-                        _updateGpsMapZoom(true);
-                    }
-                },
-                {double: true}
-            );
-
-            // add click handler to map
-            clickHandler.setMap(geo.map);
-            clickHandler.activate();
-
-            // update long and lat when map is panned
-            geo.map.events.register("moveend", map, function () {
-                updateValsFromMap();
-            });
-
-            event.on("ApplicationState", function (obj) {
-                if (obj && obj[0].id === 'gps-container' && obj.hasClass('ui-box-open')) {
-                    _updateGpsMap();
-                }
-            });
-        }
-
-        function loadGpxFile(win, fail, args) {
-            var reader = new FileReader(),
-                file = args[0],
-                _xml,
-                t,
-                att,
-                lastAtt,
-                _ele,
-                _timestamp,
-                _lastTimestamp,
-                _useTimestamp = new Date().getTime(),
-                _tempTimestamp,
-                _tempPosition,
-                _lastPosition,
-                _useLastTimestamp,
-                _heading = 0,
-                _speed = 0,
-                _dist = 0,
-                navUtils = new utils.navHelper();
-
-            reader.onload = function (e) {
-                _xml = e.target.result;
-                t = $(_xml).find('trkpt');
-
-                track = [];
-
-                utils.forEach(t, function (p, i) {
-                    if (!isNaN(i)) {
-                        att = t[i].attributes;
-                        lastAtt = t[i - 1] ? t[i - 1].attributes : {};
-                        _ele = $(t[i]).find("ele")[0];
-                        _timestamp = $(t[i]).find("time")[0];
-                        _lastTimestamp = $(t[i - 1]).find("time")[0];
-
-                        if (_timestamp) {
-                            //files recorded with endomondo and others have timestamps, this is not a route plan but a record of a track
-                            _useTimestamp = new Date(_timestamp.innerHTML).getTime();
-                        }
-
-                        if (t[i - 1]) {
-                            _dist = navUtils.getDistance(att["lat"].value, att["lon"].value, lastAtt["lat"].value, lastAtt["lon"].value);
-
-                            if (_lastTimestamp) {
-                                _useLastTimestamp = new Date(_lastTimestamp.innerHTML).getTime();
-                            }
-                            else {
-                                //routes from YOURS come in as tracks (rather than routes under the GPX schema), but with no timestamps.  This is a route.
-                                _useLastTimestamp = _useTimestamp;
-                                _useTimestamp += Math.round(_dist / 22.2222 * 1000);  //80km/h in m/s
-                            }
-
-                            _heading = navUtils.getHeading(lastAtt["lat"].value, lastAtt["lon"].value, att["lat"].value, att["lon"].value);
-                            _speed = (_dist / ((_useTimestamp - _useLastTimestamp) / 1000)).toFixed(2);
-
-                            if (!_lastTimestamp) {
-                                //on YOURS routes, make sure we have at least one update a second
-                                _tempTimestamp = _useLastTimestamp;
-
-                                while (_useTimestamp - _tempTimestamp > 1000) {
-                                    _tempTimestamp += 1000;
-                                    _lastPosition = track[track.length - 1].coords;
-                                    _tempPosition = navUtils.simulateTravel(_lastPosition.latitude, _lastPosition.longitude, _heading, _speed);
-                                    track.push({
-                                        coords: {
-                                            latitude: _tempPosition.latitude,
-                                            longitude: _tempPosition.longitude,
-                                            altitude: _ele ? _ele.innerHTML : 0,
-                                            accuracy: 150,
-                                            altitudeAccuracy: 80,
-                                            heading: _heading,
-                                            speed: _speed
-                                        },
-                                        timestamp: _tempTimestamp
-                                    });
-                                }
-                            }
-                        }
-
-                        track.push({
-                            coords: {
-                                latitude: att["lat"].value,
-                                longitude: att["lon"].value,
-                                altitude: _ele ? _ele.innerHTML : 0,
-                                accuracy: 150,
-                                altitudeAccuracy: 80,
-                                heading: _heading,
-                                speed: _speed
-                            },
-                            timestamp: _useTimestamp
-                        });
-                    }
-                });
-            };
-            reader.onerror = function (e) {
-                fail(e);
-            };
-            reader.readAsText(file.target.files[0], "UTF-8");
-        }
-
-        function replayGpxTrack() {
-            if (_replayingGpxFile) {
-                _haltGpxReplay = true;
-                gpxGo.innerHTML = constants.GEO.GPXGO_LABELS.GO;
-            }
-            else {
-                if (track.length > 0) {
-                    _haltGpxReplay = false;
-                    gpxGo.innerHTML = constants.GEO.GPXGO_LABELS.STOP;
-
-                    latitude.value = track[0].coords.latitude;
-                    longitude.value = track[0].coords.longitude;
-                    altitude.value = track[0].coords.altitude;
-                    accuracy.value = track[0].coords.accuracy;
-                    altitudeAccuracy.value = track[0].coords.altitudeAccuracy;
-                    heading.value = track[0].coords.heading;
-                    speed.value = track[0].coords.speed;
-
-                    updateGeo();
-                    updateHeadingValues();
-                    _triggerEvent();
-
-                    moveNextGpxTrack(1);
-                }
-            }
-        }
-
-        function moveNextGpxTrack(i)
-        {
-            if (_haltGpxReplay) {
-                _replayingGpxFile = false;
-                _haltGpxReplay = false;
-                console.log("Ripple :: User interrupted replay of GPX file (Aye Captain, answers All Stop.)");
-            }
-            else {
-                _replayingGpxFile = true;
-                var _timeMultiplier = !isNaN(gpxMultiplier.value) ? gpxMultiplier.value : 1,
-                _step = 0,
-                _interval = 0;
-
-                while (_interval < 250) {
-                    _step++;
-                    if ((i + _step) >= track.length) { break; }
-                    _interval = (track[i + _step].timestamp - track[i].timestamp) / _timeMultiplier;
-                }
-
-                gpxReplayStatus.textContent = (_interval / 1000).toFixed(2) + "s (" + (_interval / 1000 * _timeMultiplier).toFixed(2) + "s realtime), " + (i + 1) + " of " + track.length + " (stepping " + _step + " at " + _timeMultiplier + "x)";
-
-                setTimeout(function () {
-                    latitude.value = track[i].coords.latitude;
-                    longitude.value = track[i].coords.longitude;
-                    altitude.value = track[i].coords.altitude;
-                    accuracy.value = track[i].coords.accuracy;
-                    altitudeAccuracy.value = track[i].coords.altitudeAccuracy;
-                    heading.value = track[i].coords.heading;
-                    speed.value = track[i].coords.speed;
-
-                    updateGeo();
-                    updateHeadingValues();
-                    _triggerEvent();
-
-                    if (track[i + _step]) {
-                        moveNextGpxTrack(i + _step);
-                    }
-                    else {
-                        if (i < track.length - 1) {
-                            moveNextGpxTrack(track.length - 1);
-                        }
-                        else {
-                            _replayingGpxFile = false;
-                            gpxGo.innerHTML = constants.GEO.GPXGO_LABELS.GO;
-                            console.log("Ripple :: Finished replaying GPX file (Arriving at our destination, assuming standard orbit Captain.)");
-                        }
-                    }
-                }, _interval);
-            }
-        }
-
-        // HACK: see techdebt http://www.pivotaltracker.com/story/show/5478847 (double HACK!!!)
-        if (platform.current().id === 'phonegap' ||
-            platform.current().id === 'webworks' ||
-            platform.current().id === 'cordova') {
-            // make the fields visible
-            jQuery("#geo-cellid-container").hide();
-            jQuery("#geo-heading-container").show();
-            jQuery("#geo-speed-container").show();
-        }
-        else {
-            jQuery("#geo-cellid-container").show();
-            jQuery("#geo-heading-container").hide();
-            jQuery("#geo-speed-container").hide();
-        }
-
-        _gpsMapZoomLevel = db.retrieve(constants.GEO.MAP_ZOOM_KEY) || 14;
-
-        jQuery("#geo-map-zoom-decrease").bind("click", function () {
-            _updateGpsMapZoom(false);
-        });
-
-        jQuery("#geo-map-zoom-increase").bind("click", function () {
-            _updateGpsMapZoom(true);
-        });
-
-        utils.bindAutoSaveEvent(jQuery("#" + GEO_OPTIONS.LATITUDE), updateGeo);
-        utils.bindAutoSaveEvent(jQuery("#" + GEO_OPTIONS.LONGITUDE), updateGeo);
-        utils.bindAutoSaveEvent(jQuery("#" + GEO_OPTIONS.ALTITUDE), updateGeo);
-        utils.bindAutoSaveEvent(jQuery("#" + GEO_OPTIONS.ACCURACY), updateGeo);
-        utils.bindAutoSaveEvent(jQuery("#" + GEO_OPTIONS.ALTITUDE_ACCURACY), updateGeo);
-        utils.bindAutoSaveEvent(jQuery("#" + GEO_OPTIONS.CELL_ID), updateGeo);
-        jQuery("#" + GEO_OPTIONS.DELAY).bind("change", function () {
-            updateGeo();
-            delayLabel.innerHTML = delay.value;
-        });
-        jQuery("#" + GEO_OPTIONS.TIMEOUT).bind("click", function () {
-            updateGeo();
-        });
-        jQuery("#" + GEO_OPTIONS.GPXFILE).bind("change", function (a) {
-            loadGpxFile(null, null, [a]);
-        });
-        jQuery("#" + GEO_OPTIONS.GPXGO).bind("click", function () {
-            replayGpxTrack();
-        });
-
-        // HACK: see techdebt http://www.pivotaltracker.com/story/show/5478847 (double HACK!!!)
-        if (platform.current().id === 'phonegap' || platform.current().id === 'webworks' || platform.current().id === 'cordova') {
-            jQuery("#" + GEO_OPTIONS.HEADING).bind("change", function () {
-                updateGeo();
-                updateHeadingValues();
-            });
-
-            utils.bindAutoSaveEvent(jQuery("#" + GEO_OPTIONS.SPEED), updateGeo);
-            heading.value =       positionInfo.heading;
-            speed.value =         positionInfo.speed;
-        }
-
-        initMap();
-
-        initializeValues();
-
-        event.on(positionEvent, function () {
-            _updateGpsMap();
-        });
-
-        _triggerEvent();
-
-        function _triggerEvent() {
-            event.trigger(positionEvent, [{
-                latitude: latitude.value,
-                longitude: longitude.value,
-                altitude: altitude.value,
-                accuracy: accuracy.value,
-                altitudeAccuracy: altitudeAccuracy.value,
-                heading: heading ? heading.value : 0, // HACK: see techdebt http://www.pivotaltracker.com/story/show/5478847
-                speed: speed ? speed.value : 0, // HACK: see techdebt http://www.pivotaltracker.com/story/show/5478847
-                cellID: cellID.value,
-                timeStamp: new Date()
-            }]);
         }
     }
 };
@@ -52653,11 +52675,11 @@ function _initialize() {
 
     select.value = String(db.retrieve(PROXY_SETTING));
 
-    // default to remote if unknown value is found in db
+    // default to local if unknown value is found in db
     if (!Object.keys(PROXY_SETTINGS_LIST).some(function (key) {
         return select.value === PROXY_SETTINGS_LIST[key];
     })) {
-        select.value = PROXY_SETTINGS_LIST.remote;
+        select.value = PROXY_SETTINGS_LIST.local;
         db.save(select.value);
     }
 
@@ -53287,6 +53309,7 @@ ripple.define('ui', function (ripple, exports, module) {
  */
 var _self,
     db = ripple('db'),
+    pluginUi = ripple('pluginUi'),
     platform = ripple('platform'),
     constants = ripple('constants'),
     utils = ripple('utils'),
@@ -53518,13 +53541,18 @@ function _initializeUI() {
     });
 }
 
+
 _self = module.exports = {
     initialize: function () {
-        var plugins = _systemPlugins.concat(platform.current().ui.plugins || []).map(function (name) {
+        // INTC: Include contributions obtained from plugins
+        var plugins = _systemPlugins.concat(platform.current().ui.plugins || []).
+            concat(pluginUi.getUiPluginModules()).
+            map(function (name) {
                 return ripple('ui/plugins/' + name);
             }),
             boot = jWorkflow.order(_initializeUI);
 
+        // Add UI from the plugins
         _availablePanels = [];
 
         plugins.forEach(function (plugin) {
@@ -53832,7 +53860,9 @@ self = module.exports = {
             result = initial;
 
         //MozHack for NamedNodeMap
+        /* jshint ignore:start */
         if(window.MozNamedAttrMap) NamedNodeMap = window.MozNamedAttrMap;
+        /* jshint ignore:end */
 
         if (obj instanceof Array) {
             return obj.reduce(func, initial);
@@ -53860,7 +53890,9 @@ self = module.exports = {
             result = [];
 
         //MozHack for NamedNodeMap
+        /* jshint ignore:start */
         if(window.MozNamedAttrMap) NamedNodeMap = window.MozNamedAttrMap;
+        /* jshint ignore:end */
 
         if (obj instanceof Array) {
             return obj.map(func, scope);
