@@ -4,7 +4,7 @@ var shell = require('shelljs'),
     path = require('path');
 
 module.exports = function(projectRoot) {
-    ["cordova.js", "config.xml"].forEach(function (file) {
+    ["config.xml"].forEach(function (file) {
         console.log('Copying ' + file + ' to www dir...');
         shell.cp("-f", path.join(projectRoot, file), path.join(projectRoot, 'www'));
     });

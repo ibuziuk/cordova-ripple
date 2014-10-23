@@ -89,11 +89,7 @@ exports.createProject = function(project_path, package_name, project_name, proje
 
         setShellFatal(true, function() {
             // copy project template
-            shell.cp('-r', path.join(project_template_dir, 'ripple'), project_path);
-            // copy scripts.js
-            shell.cp('-r', path.join(project_template_dir, 'cordova'), project_path);
-            // copy cordova.js
-            shell.cp('-r', path.join(ROOT, 'cordova.js'), project_path);
+            shell.cp('-r', path.join(project_template_dir, '*'), project_path);
             // TODO - investigate the right way
             fs.chmodSync(path.join(project_path, 'cordova/run'), '755');
             fs.chmodSync(path.join(project_path, 'cordova/build'), '755');
