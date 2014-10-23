@@ -4,10 +4,11 @@ var shell = require('shelljs'),
     path = require('path');
 
 module.exports = function(projectRoot) {
-    ["config.xml"].forEach(function (file) {
-        console.log('Copying ' + file + ' to www dir...');
-        shell.cp("-f", path.join(projectRoot, file), path.join(projectRoot, 'www'));
-    });
+    // this is managed by cordova-lib
+    // ["config.xml"].forEach(function (file) {
+    //     console.log('Copying ' + file + ' to www dir...');
+    //     shell.cp("-f", path.join(projectRoot, file), path.join(projectRoot, 'www'));
+    // });
 };
 
 module.exports.help = function(args) {
